@@ -85,11 +85,17 @@ class User
 
     /**
      * @return $this
+     *
+     * @throws \Exception
      */
     public function save()
     {
         $id = $this->id;
         if (empty($this->id)) {
+            $issetUserName = $this->redis->sGetMembers('up:' . $this->userName);
+            if (!empty($issetUserName)) {
+                throw new \Exception('UserName isn\'t empty');
+            }
             $id = $this->redis->get('userId');
             if (empty($id)) {
                 $id = 0;
@@ -101,7 +107,7 @@ class User
             $this->id = $id;
         }
         $this->redis->hmset("user:$id", ['username' => $this->userName, 'password' => $this->password]);
-        $this->redis->sadd('up:' . $this->userName . $this->password, $id);
+        $this->redis->sadd('up:' . $this->userName, $id);
         return $this;
     }
 
