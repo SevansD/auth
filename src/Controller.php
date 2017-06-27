@@ -43,7 +43,7 @@ class Controller
         if (empty($password)) {
             $this->setError('password', 'empty');
         }
-        $user = (new User($this->container))->searchByUP($userName);
+        $user = (new User($this->container))->searchByUP($userName . $password);
         if ($user === false) {
             $this->setError('user', 'Not found');
         }
