@@ -124,13 +124,69 @@ class User
     }
 
     /**
-     * @param string $up UserName+Password
+     * @param string $userName
+     * @param string $password
      *
      * @return bool
      */
-    public function searchByUP($up)
+    public function searchByUP($userName, $password)
     {
-        $users = $this->redis->sGetMembers('up:' . $up);
+        $hashes = $this->passwordHash($password);
+        $users = $this->redis->sGetMembers('up:' . $userName . $hashes['hash']);
         return empty($users) ? false : $users[0];
+    }
+
+
+
+    public static function isAuthorized()
+    {
+        if (!empty($_SESSION["user_id"])) {
+            return (bool) $_SESSION["user_id"];
+        }
+        return FALSE;
+    }
+
+    public function saveSession($remember = false, $http_only = true, $days = 7)
+    {
+        $_SESSION["user_id"] = $this->id;
+
+        if ($remember) {
+            $sid = session_id();
+            $expire = time() + $days * 24 * 3600;
+            $domain = "";
+            $secure = false;
+            $path = "/";
+
+            setcookie(
+                "sid",
+                $sid,
+                $expire,
+                $path,
+                $domain,
+                $secure,
+                $http_only
+            );
+        }
+    }
+
+    public function passwordHash($password, $salt = null, $iterations = 10)
+    {
+        $salt || $salt = uniqid();
+        $hash = md5(md5($password . md5(sha1($salt))));
+
+        for ($i = 0; $i < $iterations; ++$i) {
+            $hash = md5(md5(sha1($hash)));
+        }
+
+        return array('hash' => $hash, 'salt' => $salt);
+    }
+
+    public function generateSID($key)
+    {
+        return hash(
+            'sha256',
+            $this->id . $this->userName,
+            $key
+        );
     }
 }
