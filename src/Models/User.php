@@ -131,8 +131,8 @@ class User
      */
     public function searchByUP($userName, $password)
     {
-        $hashes = $this->passwordHash($password);
-        $users = $this->redis->sGetMembers('up:' . $userName . $hashes['hash']);
+        $hashes = $this->passwordHash($password, APP_SECRET_KEY);
+        $users = $this->redis->sMembers('up:' . $userName . $hashes['hash']);
         return empty($users) ? false : $users[0];
     }
 
