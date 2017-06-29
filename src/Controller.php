@@ -3,10 +3,10 @@
 namespace Duamel\Auth;
 
 use DI\Container;
-use Duamel\Auth\Models\User;
+use Duamel\Auth\Entity\User;
+use Duamel\Auth\Entity\UserManager;
 use Klein\Request;
 use Klein\Response;
-use Klein\ServiceProvider;
 
 /**
  * Class Controller
@@ -19,13 +19,13 @@ class Controller
     private $errors;
 
     /**
-     * @var \DI\Container
+     * @var UserManager
      */
-    private $container;
+    private $manager;
 
     public function __construct(Container $container)
     {
-        $this->container = $container;
+        $this->manager = new UserManager($container);
     }
 
     public function register(Request $request, Response $response)
@@ -36,18 +36,22 @@ class Controller
         $password = $request->param('password');
         if (empty($userName)) {
             $this->setError('username', 'empty');
+            return $this->throwError($response);
         }
         if (empty($password)) {
             $this->setError('password', 'empty');
+            return $this->throwError($response);
         }
-        $user = new User($this->container);
-        $issetUser = $user->searchByUP($userName, $password);
+        $issetUser = $this->manager->searchIdByUserName($userName);
         if ($issetUser) {
             $this->setError('username', 'duplicate');
+            return $this->throwError($response);
         }
-        $user->setUserName($userName)->setPassword($password);
-        $user->save();
-        $this->processLogin($user, $request, $response);
+        $user = (new User())
+            ->setUserName($userName)
+            ->setPassword(Crypto::passwordHash($password, APP_SECRET_KEY)['hash']);
+        $this->manager->save($user);
+        return $this->processLogin($user, $request, $response);
     }
 
     /**
@@ -70,11 +74,15 @@ class Controller
             $this->setError('password', 'empty');
             return $this->throwError($response);
         }
-        /** @var User $user */
-        $user = (new User($this->container))->searchByUP($userName, $password);
+        $userId = $this->manager->searchIdByUserName($userName);
 
-        if ($user === FALSE) {
+        if ($userId === FALSE) {
             $this->setError('user', 'Not found');
+            return $this->throwError($response);
+        }
+        $user = $this->manager->loadById($userId);
+        if (!Crypto::comparePassword($password, $user->getPassword(), APP_SECRET_KEY)) {
+            $this->setError('password', 'Incorrect');
             return $this->throwError($response);
         }
         return $this->processLogin($user, $request, $response);
@@ -87,16 +95,15 @@ class Controller
      *
      * @return string
      */
-    private function processLogin($user, $request, $response)
+    private function processLogin(User $user, $request, $response)
     {
-        $SID = $user->generateSID(APP_SECRET_KEY);
+        $SID = $this->manager->generateSID($user, APP_SECRET_KEY);
         if (empty($this->errors)) {
             $response->code(202);
-            return
-                json_encode([
+            return json_encode([
                 'status' => 'ok',
                 'user_id' => $user->getId(),
-                'userName=' . urlencode($user->getUserName()),
+                'userName=' . $user->getUserName(),
                 'sid' => $SID]);
         }
         return $this->throwError($response);
@@ -122,6 +129,7 @@ class Controller
 
     private function setError($field, $error)
     {
-        $this->errors[$field] = $error;
+        $this->errors[] = $field;
+        $this->errors[] = $error;
     }
 }

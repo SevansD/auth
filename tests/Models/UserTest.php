@@ -4,7 +4,8 @@ namespace Duamel\Auth\Test\Model;
 
 use DI\ContainerBuilder;
 use Duamel\Auth\Config;
-use Duamel\Auth\Models\User;
+use Duamel\Auth\Entity\UserManager;
+use Duamel\Auth\Entity\User;
 use Predis\Client;
 
 class UserTest extends \PHPUnit_Framework_TestCase
@@ -15,10 +16,16 @@ class UserTest extends \PHPUnit_Framework_TestCase
      */
     private $container;
 
+    /**
+     * @var UserManager
+     */
+    private $manager;
+
     public function setUp()
     {
         $this->container = ContainerBuilder::buildDevContainer();
         $this->container->set('redis', new Client(Config::get('redis', 'test')));
+        $this->manager = new UserManager($this->container);
     }
 
     /**
@@ -34,7 +41,7 @@ class UserTest extends \PHPUnit_Framework_TestCase
             ->setId($id)
             ->setUserName($username)
             ->setPassword($password);
-        $user->save();
+        $this->manager->save($user);
         $this->assertNotNull($user->getId());
     }
 
@@ -55,27 +62,12 @@ class UserTest extends \PHPUnit_Framework_TestCase
      */
     public function testLoadById($id, $pass, $name)
     {
-        $user = (new User($this->container))
+        $user = (new User())
             ->setId($id)
             ->setPassword($pass)
             ->setUserName($name);
-        $user->save();
-        $testUser = new User($this->container);
-        $testUser->loadById($user->getId());
+        $this->manager->save($user);
+        $testUser = $this->manager->loadById($user->getId());
         $this->assertEquals($user, $testUser);
     }
-
-    public function loadByIdProvider()
-    {
-        return [
-            [1, 'pass', 'name'],
-        ];
-    }
-
-    public function testLoadByIdException()
-    {
-        $this->expectException(\Exception::class);
-        (new User($this->container))->loadById(100000);
-    }
-
 }
