@@ -102,8 +102,8 @@ class Controller
             $response->code(202);
             return json_encode([
                 'status' => 'ok',
-                'user_id' => $user->getId(),
-                'userName=' . $user->getUserName(),
+                'userId' => $user->getId(),
+                'userName' => $user->getUserName(),
                 'sid' => $SID]);
         }
         return $this->throwError($response);
