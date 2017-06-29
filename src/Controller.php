@@ -120,12 +120,6 @@ class Controller
         return json_encode(['status' => 'error', 'errors' => $this->errors]);
     }
 
-    public function logout(Request $request)
-    {
-        setcookie('sid', '');
-        $user = $request->param('user');
-    }
-
 
     private function setError($field, $error)
     {

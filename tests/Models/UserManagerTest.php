@@ -8,7 +8,7 @@ use Duamel\Auth\Entity\UserManager;
 use Duamel\Auth\Entity\User;
 use Predis\Client;
 
-class UserTest extends \PHPUnit_Framework_TestCase
+class UserManagerTest extends \PHPUnit_Framework_TestCase
 {
 
     /**
